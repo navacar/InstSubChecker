@@ -2,15 +2,12 @@ import requests
 import telebot
 import instaloader
 from bs4 import BeautifulSoup
-<<<<<<< Updated upstream
 
 from config import TELEGRAM_TOKEN, INST_USERNAME_BOT, INST_PASSWORD_BOT, START_TEXT
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
-=======
 import os
 bot = telebot.TeleBot('1669911641:AAFcOx45b8c4ULDzo43ISLn8WfV4y7RAPKw')
->>>>>>> Stashed changes
 
 oneTime = False
 start = False
@@ -43,15 +40,12 @@ def send_text(message):
         bot.send_message(message.chat.id, "Вы ввели неправильное имя аккаунта")
 
 
-<<<<<<< Updated upstream
 def subscribers_list(username):
     profile = instaloader.Profile.from_username(loader.context, username)
-=======
 def subscribersList(username):
     profile = instaloader.Profile.from_username(L.context, username)
     subList = []
     
->>>>>>> Stashed changes
     for followee in profile.get_followers():
         subscriber = followee.username
         subList.append(subscriber)
