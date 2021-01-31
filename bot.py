@@ -3,25 +3,26 @@ import telebot
 import instaloader
 from bs4 import BeautifulSoup
 
-bot = telebot.TeleBot('1669911641:AAFcOx45b8c4ULDzo43ISLn8WfV4y7RAPKw')
+from config import TELEGRAM_TOKEN, INST_USERNAME_BOT, INST_PASSWORD_BOT, START_TEXT
+
+bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
 oneTime = False
 start = False
 
-L = instaloader.Instaloader()
-username = "tyrok00002021"
-password = "123456w"
-L.login(username, password) 
+loader = instaloader.Instaloader()
+loader.login(INST_USERNAME_BOT, INST_PASSWORD_BOT)
+
 
 @bot.message_handler(commands=['start'])
 def start_message(message):
     global oneTime
-    
+
     global start
     start = True
 
-    if oneTime == False:
-        bot.send_message(message.chat.id, 'Привет, этот бот показывает кто отписались от тебя в инстаграмме.\nДля того чтобы начать пришли сюда имя аккаунта')
+    if not oneTime:
+        bot.send_message(message.chat.id, START_TEXT)
         oneTime = True
     else:
         bot.send_message(message.chat.id, "Пришли имя аккаунта")
@@ -32,15 +33,16 @@ def send_text(message):
     response = requests.get("https://instagram.com/" + message.text + "/")
     if response.status_code != 404:
         bot.send_message(message.chat.id, "Ждите, считаем подписчиков")
-        subscribersList(message.text)
+        subscribers_list(message.text)
     else:
-        bot.send_message(message.chat.id, "Вы ввели не правильное имя аккаунта")
+        bot.send_message(message.chat.id, "Вы ввели неправильное имя аккаунта")
 
 
-def subscribersList(username):
-    profile = instaloader.Profile.from_username(L.context, username)
+def subscribers_list(username):
+    profile = instaloader.Profile.from_username(loader.context, username)
     for followee in profile.get_followers():
         subscribers = followee.username
         print(subscribers)
+
 
 bot.polling()
