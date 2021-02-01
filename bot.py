@@ -2,12 +2,12 @@ import requests
 import telebot
 import instaloader
 from bs4 import BeautifulSoup
-
+import os
 from config import TELEGRAM_TOKEN, INST_USERNAME_BOT, INST_PASSWORD_BOT, START_TEXT
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
-import os
-bot = telebot.TeleBot('1669911641:AAFcOx45b8c4ULDzo43ISLn8WfV4y7RAPKw')
+
+
 
 oneTime = False
 start = False
@@ -35,15 +35,13 @@ def send_text(message):
     
     if profileCheck(message.text):
         bot.send_message(message.chat.id, "Ждите, считаем подписчиков")
-        subscribers_list(message.text)
+        subscribersList(message.text)
     else:
         bot.send_message(message.chat.id, "Вы ввели неправильное имя аккаунта")
 
 
-def subscribers_list(username):
-    profile = instaloader.Profile.from_username(loader.context, username)
 def subscribersList(username):
-    profile = instaloader.Profile.from_username(L.context, username)
+    profile = instaloader.Profile.from_username(loader.context, username)
     subList = []
     
     for followee in profile.get_followers():
@@ -52,20 +50,20 @@ def subscribersList(username):
 
     return subList
 
-# def profileCheck(username):
-#     response = requests.get("https://instagram.com/" + username + "/")
-#     isExist = True
+def profileCheck(username):
+    # response = requests.get("https://instagram.com/" + username + "/")
+    isExist = True
 
-#     with open('test.html', 'w') as output_file:
-#         output_file.write(response.text)
-#     word = "Page Not Found"
+    # with open('test.html', 'w') as output_file:
+    #     output_file.write(response.text)
+    # word = "Page Not Found"
     
-#     with open('test.html', 'r') as file:
-#         for line in file:
-#             if word in line:
-#                 print("Da")
-#                 isExist = False
-#     return isExist
+    # with open('test.html', 'r') as file:
+    #     for line in file:
+    #         if word in line:
+    #             print("Da")
+    #             isExist = False
+    return isExist
 
 
 bot.polling()
