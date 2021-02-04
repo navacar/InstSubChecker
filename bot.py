@@ -2,39 +2,33 @@ import telebot
 import instaloader
 import requests
 
+from config import TELEGRAM_TOKEN, INST_USERNAME_BOT, INST_PASSWORD_BOT, START_TEXT, ERROR_MESSAGE, HELP_TEXT
 from Log import Log
 from DataBase import DataBase
-
-from config import TELEGRAM_TOKEN, INST_USERNAME_BOT, INST_PASSWORD_BOT, START_TEXT, ERROR_MESSAGE
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
 logAdapter = Log()
 dbAdapter = DataBase(main_log=logAdapter)
 
-start = False
-
-profile = instaloader.Instaloader()
 loader = instaloader.Instaloader()
 loader.login(INST_USERNAME_BOT, INST_PASSWORD_BOT)
 
-def list2str(arr):
-    return '\n'.join(arr) + '\n'
 
 def add_user(chat_id, inst_login):
     """
     Добавляет инст акк в бд, если он ещё не прикреплён.
-    :param chat_id:
-    :param inst_login:
     :return: True - если акк добавлен, False - если что-то пошло не так, str - если этот акк уже прикреплён.
     """
     if inst_login in dbAdapter.get_logins_by_id(chat_id):
         return 'Этот аккаунт уже прикреплён вами'
+    followers = subscribersList(inst_login)
+    # followers = list(map(str, list(range(5))))  # Временная заглушка
+    if followers is None:
+        return False
     status = dbAdapter.add_user(chat_id, inst_login)
     status_ = None
     if status:
-        # followers = subscribersList(inst_login)
-        followers = list(map(str, list(range(5))))  # Временная заглушка
         status_ = dbAdapter.refresh_followers(chat_id, inst_login, followers)
     return status and bool(status_)
 
@@ -52,34 +46,41 @@ def get_unsub_followers(chat_id, inst_login):
     if not old_followers:
         logAdapter.event('Warn! Попытка найти отписавшихся без прошлых данных', print_=True)
 
-    # new_followers = subscribersList(inst_login)
-    new_followers = list(map(str, list(range(2, 8))))  # Временная заглушка
+    new_followers = subscribersList(inst_login)
+    if new_followers is None:
+        return False
+    # new_followers = list(map(str, list(range(2, 8))))  # Временная заглушка
     unsubcribers = set(old_followers) - set(new_followers)
     return list(unsubcribers)
 
 
 def update_followers(chat_id, inst_login):
-    # new_followers = subscribersList(inst_login)
-    new_followers = list(map(str, list(range(2, 8))))  # Временная заглушка
+    new_followers = subscribersList(inst_login)
+    if new_followers is None:
+        return False
+    # new_followers = list(map(str, list(range(2, 8))))  # Временная заглушка
     status = dbAdapter.refresh_followers(chat_id, inst_login, new_followers)
     return status is not None
 
 
+def list2str(arr):
+    return '\n'.join(arr) + '\n'
+
+
 @bot.message_handler(commands=['start'])
 def start_message(message):
-    global start
-
+    """
+    Отправляет стартовое сообщение, и добавляет акк инсты в базу, если он существует.
+    """
     if message.text == '/start':
         bot.send_message(message.chat.id, START_TEXT)
-        start = True
     else:
-        bot.send_message(message.chat.id, "Пришли имя аккаунта")
-        # inst = message.text.split()[1]
-        # status = add_user(message.chat.id, inst)
-        # if isinstance(status, str):
-        #     bot.send_message(message.chat.id, status)
-        # else:
-        #     bot.send_message(message.chat.id, ERROR_MESSAGE if not status else 'Я тебя запомнил;)')
+        inst = message.text.split()[1]
+        status = add_user(message.chat.id, inst)
+        if isinstance(status, str):
+            bot.send_message(message.chat.id, status)
+        else:
+            bot.send_message(message.chat.id, ERROR_MESSAGE if not status else 'Я тебя запомнил;)')
 
 
 @bot.message_handler(commands=['unsub'])
@@ -131,44 +132,33 @@ def delete_account_command(message):
     status = dbAdapter.delete_user(message.chat.id, inst)
     if not status:
         bot.send_message(message.chat.id, ERROR_MESSAGE)
-    global start
-    start = False
-
-    if not False:
-        bot.send_message(message.chat.id, START_TEXT)
-        start = True
     else:
         bot.send_message(message.chat.id, 'Аккаунт {} больше не отслеживается'.format(inst))
 
 
+@bot.message_handler(commands=['help'])
+def help_command(message):
+    bot.send_message(message.chat.id, HELP_TEXT)
+
+
 @bot.message_handler(content_types=['text'])
 def send_text(message):
-    global start
+    bot.send_message(message.chat.id, HELP_TEXT)
 
-    if profileCheck(message.text) and start:
-        bot.send_message(message.chat.id, "Ждите, считаем подписчиков")
-        subList = subscribersList(message.text)
-        # Это заглушка чтобы понимать что функция сработала до конца
-        bot.send_message(message.chat.id, "У вас " + str(len(subList)) + " подписчиков")
-    elif start:
-        bot.send_message(message.chat.id, "Вы ввели неправильное имя аккаунта")
 
 def subscribersList(username):
-    subList = []
-    for followee in profile.get_followers():
-        subList.append(followee.username)
+    try:
+        profile = instaloader.Profile.from_username(loader.context, username)
+    except Exception as e:
+        logAdapter.error('Аккаунта не существует, либо закрыта страница: ' + username, print_=True)
+        return None
+
+    subList = [followee.username for followee in profile.get_followers()]
     return subList
 
 
 def profileCheck(username):
-    global profile
-    isExist = True
+    pass
 
-    try: 
-        profile = instaloader.Profile.from_username(loader.context, username) 
-    except Exception as e:  
-        isExist = False
-
-    return isExist
 
 bot.polling()
