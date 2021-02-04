@@ -1,3 +1,10 @@
 /venv
+env/
+__pycache__/
+*.py[cod]
 .idea
+
 config.py
+*.log
+*.db
+Procfile
