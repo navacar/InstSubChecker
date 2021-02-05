@@ -157,6 +157,34 @@ def subscribersList(username):
     return subList
 
 
+def mutualSubscriptions(username):
+    youFollow = []
+    followedYou = []
+    faggotsList = []
+    
+    youFollow = subscribersList(username)
+    if youFollow != None:
+        profile = instaloader.Profile.from_username(loader.context, username)
+        followedYou = [followee.username for followee in profile.get_followees()]
+
+        for i in range(len(followedYou)):
+            
+            isNeedToAdd = True
+            for j in range(len(youFollow)):
+                if followedYou[i] == youFollow[j]:
+                    isNeedToAdd = False
+                    youFollow.remove(youFollow[j])
+                    break
+            
+            if isNeedToAdd:
+                faggotsList.append(followedYou[i])
+                    
+    else:
+        faggotsList = None
+
+    return faggotsList
+
+
 def profileCheck(username):
     pass
 
