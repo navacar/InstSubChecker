@@ -2,7 +2,7 @@ import telebot
 import instaloader
 import requests
 
-from config import TELEGRAM_TOKEN, INST_USERNAME_BOT, INST_PASSWORD_BOT, START_TEXT, ERROR_MESSAGE, HELP_TEXT
+from config import WRONG_INST_USERNAME, MUTUAL_TEXT, TELEGRAM_TOKEN, INST_USERNAME_BOT, INST_PASSWORD_BOT, START_TEXT, ERROR_MESSAGE, HELP_TEXT
 from Log import Log
 from DataBase import DataBase
 
@@ -139,6 +139,20 @@ def delete_account_command(message):
 @bot.message_handler(commands=['help'])
 def help_command(message):
     bot.send_message(message.chat.id, HELP_TEXT)
+
+
+@bot.message_handler(commands=['mutual'])
+def help_command(message):
+    if message.text == "/mutual":
+        bot.send_message(message.chat.id, MUTUAL_TEXT)
+    else:
+        bot.send_message(message.chat.id, "Подождите")
+        inst = message.text.split()[1]
+        subList = mutualSubscriptions(inst)
+        if subList != None:
+            bot.send_message(message.chat.id, list2str(subList))
+        else: 
+            bot.send_message(message.chat.id, WRONG_INST_USERNAME)
 
 
 @bot.message_handler(content_types=['text'])
