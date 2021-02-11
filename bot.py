@@ -63,6 +63,16 @@ def update_followers(chat_id, inst_login):
     return status is not None
 
 
+def add_last_command(chat_id, command):
+    return dbAdapter.set_last_command(chat_id, command)
+
+
+def pop_last_command(chat_id):
+    # тут может быть None
+    command = dbAdapter.pop_last_commend(chat_id)
+    return command
+
+
 def list2str(arr):
     return '\n'.join(arr) + '\n'
 

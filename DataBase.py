@@ -29,6 +29,11 @@ class DataBase:
         #     `inst_followers` TEXT DEFAULT "",
         #     `latest_update` timestamp)""")
         # self.connection.commit()
+        # self.cursor.execute("""
+        #     CREATE TABLE "storage" (
+        #     `telegram_id` INTEGER PRIMARY KEY,
+        #     `last_command` TEXT DEFAULT "")""")
+        # self.connection.commit()
         self.log = main_log
 
     def add_user(self, tg_id, inst_login):
@@ -39,9 +44,10 @@ class DataBase:
         :return: True, если всё хорошо, иначе - None
         """
         try:
-            self.cursor.execute("""INSERT OR IGNORE
-                                INTO users (tg_id, inst_login)
-                                VALUES (:tg_id, :inst_login)""", {"tg_id": tg_id, "inst_login": inst_login}, )
+            self.cursor.execute("INSERT OR IGNORE INTO users (tg_id, inst_login) "
+                                "VALUES (:tg_id, :inst_login)", {"tg_id": tg_id, "inst_login": inst_login}, )
+            # self.connection.commit()
+            self.cursor.execute("INSERT OR IGNORE INTO storage (telegram_id) VALUE (:tg_id)", {"tg_id": tg_id},)
             self.connection.commit()
             self.log.event('add user in db, id: ' + ' '.join([str(tg_id), inst_login]))
             return True
@@ -107,17 +113,39 @@ class DataBase:
 
     def delete_user(self, tg_id, inst_login):
         """
-                Удаляет пользователя из бд. Опасно!
-                :param tg_id: telegram chat id пользователя
-                :param inst_login: instagram login пользователя
-                :return: True, если всё хорошо, иначе - None
-                """
+        Удаляет пользователя из бд. Опасно!
+        :param tg_id: telegram chat id пользователя
+        :param inst_login: instagram login пользователя
+        :return: True, если всё хорошо, иначе - None
+        """
         try:
             self.cursor.execute("DELETE FROM users WHERE tg_id=:tg_id AND inst_login=:inst_login",
                                 {"tg_id": tg_id, "inst_login": inst_login})
             self.connection.commit()
             self.log.event('DELETE USER in db, id: ' + ' '.join([str(tg_id), inst_login]))
             return True
+        except Exception as e:
+            self.log.error(str(e))
+            return None
+
+    def set_last_command(self, tg_id, command):
+        try:
+            self.cursor.execute("UPDATE storage SET last_command=:command"
+                                "WHERE telegram_id=:tg_id", {"tg_id": tg_id, "command": command},)
+            self.connection.commit()
+            self.log.event('set last command in db, id, command:' + ' '.join([str(tg_id), command]))
+            return True
+        except Exception as e:
+            self.log.error(str(e))
+            return None
+
+    def pop_last_commend(self, tg_id):
+        try:
+            self.cursor.execute("SELECT last_command FROM storage WHERE telegram_id=:tg_id", {"tg_id": tg_id},)
+            command = self.cursor.fetchall()[0]
+            self.cursor.execute('UPDATE storage SET last_command="" WHERE telegram_id=:tg_id', {"tg_id": tg_id},)
+            self.connection.commit()
+            return command
         except Exception as e:
             self.log.error(str(e))
             return None
