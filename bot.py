@@ -64,7 +64,8 @@ def update_followers(chat_id, inst_login):
 
 
 def add_last_command(chat_id, command):
-    return dbAdapter.set_last_command(chat_id, command)
+    status = dbAdapter.add_telegram_user_if_not_exists(chat_id)
+    return status and dbAdapter.set_last_command(chat_id, command)
 
 
 def pop_last_command(chat_id):
@@ -125,6 +126,9 @@ def unsub_command(message):
 
 @bot.message_handler(commands=['show'])
 def show_accounts_command(message):
+    """
+    Выводит список прикреплённых инст акков
+    """
     accounts = dbAdapter.get_logins_by_id(message.chat.id)
     if not accounts:
         bot.send_message(message.chat.id, 'Не найдено приклённых аккаунтов')
@@ -159,7 +163,7 @@ def help_command(message):
         bot.send_message(message.chat.id, "Подождите")
         inst = message.text.split()[1]
         subList = mutualSubscriptions(inst)
-        if subList != None:
+        if subList is not None:
             bot.send_message(message.chat.id, list2str(subList))
         else: 
             bot.send_message(message.chat.id, WRONG_INST_USERNAME)
@@ -187,7 +191,7 @@ def mutualSubscriptions(username):
     faggotsList = []
     
     youFollow = subscribersList(username)
-    if youFollow != None:
+    if youFollow is not None:
         profile = instaloader.Profile.from_username(loader.context, username)
         followedYou = [followee.username for followee in profile.get_followees()]
 
@@ -207,10 +211,6 @@ def mutualSubscriptions(username):
         faggotsList = None
 
     return faggotsList
-
-
-def profileCheck(username):
-    pass
 
 
 bot.polling()

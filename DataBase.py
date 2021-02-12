@@ -46,10 +46,25 @@ class DataBase:
         try:
             self.cursor.execute("INSERT OR IGNORE INTO users (tg_id, inst_login) "
                                 "VALUES (:tg_id, :inst_login)", {"tg_id": tg_id, "inst_login": inst_login}, )
-            # self.connection.commit()
-            self.cursor.execute("INSERT OR IGNORE INTO storage (telegram_id) VALUE (:tg_id)", {"tg_id": tg_id},)
             self.connection.commit()
-            self.log.event('add user in db, id: ' + ' '.join([str(tg_id), inst_login]))
+            self.log.event('add inst user in db, id: ' + ' '.join([str(tg_id), inst_login]))
+            return True
+        except Exception as e:
+            self.log.error(str(e))
+            return None
+
+    def add_telegram_user_if_not_exists(self, tg_id):
+        """
+        Добавляет telegram id в storage, если его там не было.
+        :return: True, если всё хорошо, иначе - None
+        """
+        try:
+            self.cursor.execute("SELECT telegram_id FROM storage WHERE telegram_id=:tg_id", {"tg_id": tg_id},)
+            tg = self.cursor.fetchall()[0]
+            if not tg:
+                self.cursor.execute("INSERT OR IGNORE INTO storage (telegram_id) VALUE (:tg_id)", {"tg_id": tg_id}, )
+                self.connection.commit()
+                self.log.event('add tg user in storage, id: ' + str(tg_id))
             return True
         except Exception as e:
             self.log.error(str(e))
@@ -76,10 +91,10 @@ class DataBase:
 
     def get_logins_by_id(self, tg_id):
         """
-                Возвращет все inst акки, которые прикреплял пользователь
-                :param tg_id: telegram chat id пользователя
-                :return: list, содержащий список inst логинов, в случае ошибки - None
-                """
+        Возвращет все inst акки, которые прикреплял пользователь
+        :param tg_id: telegram chat id пользователя
+        :return: list, содержащий список inst логинов, в случае ошибки - None
+        """
         try:
             self.cursor.execute(
                 "SELECT inst_login FROM users WHERE tg_id=:tg_id",
@@ -129,22 +144,31 @@ class DataBase:
             return None
 
     def set_last_command(self, tg_id, command):
+        """
+        Устанавливаем last_command = command для пользователя tg_id в таблице storage
+        :return: True, если всё хорошо, иначе - None
+        """
         try:
             self.cursor.execute("UPDATE storage SET last_command=:command"
                                 "WHERE telegram_id=:tg_id", {"tg_id": tg_id, "command": command},)
             self.connection.commit()
-            self.log.event('set last command in db, id, command:' + ' '.join([str(tg_id), command]))
+            self.log.event('set last command in storage, id, command:' + ' '.join([str(tg_id), command]))
             return True
         except Exception as e:
             self.log.error(str(e))
             return None
 
     def pop_last_commend(self, tg_id):
+        """
+        Возвращает последнюю команду, и удаляет её из storage
+        :return: last command, если всё плохо - None
+        """
         try:
             self.cursor.execute("SELECT last_command FROM storage WHERE telegram_id=:tg_id", {"tg_id": tg_id},)
             command = self.cursor.fetchall()[0]
             self.cursor.execute('UPDATE storage SET last_command="" WHERE telegram_id=:tg_id', {"tg_id": tg_id},)
             self.connection.commit()
+            self.log.event('pop last command from storage, id, command:' + ' '.join([str(tg_id), command]))
             return command
         except Exception as e:
             self.log.error(str(e))
