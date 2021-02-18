@@ -38,7 +38,7 @@ class DataBase:
 
     def add_user(self, tg_id, inst_login):
         """
-        Добавляет пользователя инсты к конкретному телеграм аккаунту
+        Добавляет пользователя инсты к конкретному телеграм аккаунту в users
         :param tg_id: telegram chat id пользователя
         :param inst_login: instagram login пользователя
         :return: True, если всё хорошо, иначе - None
@@ -60,11 +60,15 @@ class DataBase:
         """
         try:
             self.cursor.execute("SELECT telegram_id FROM storage WHERE telegram_id=:tg_id", {"tg_id": tg_id},)
-            tg = self.cursor.fetchall()[0]
+            tg = self.cursor.fetchall()
+            print(tg)
             if not tg:
-                self.cursor.execute("INSERT OR IGNORE INTO storage (telegram_id) VALUE (:tg_id)", {"tg_id": tg_id}, )
+                self.cursor.execute("INSERT OR IGNORE INTO storage (telegram_id) VALUES (:tg_id)", {"tg_id": tg_id}, )
                 self.connection.commit()
                 self.log.event('add tg user in storage, id: ' + str(tg_id))
+            else:
+                self.log.event('tg user already exists in storage, id: ' + str(tg_id))
+
             return True
         except Exception as e:
             self.log.error(str(e))
@@ -150,7 +154,7 @@ class DataBase:
         """
         try:
             self.cursor.execute("UPDATE storage SET last_command=:command"
-                                "WHERE telegram_id=:tg_id", {"tg_id": tg_id, "command": command},)
+                                " WHERE telegram_id=:tg_id", {"tg_id": tg_id, "command": command},)
             self.connection.commit()
             self.log.event('set last command in storage, id, command:' + ' '.join([str(tg_id), command]))
             return True
@@ -165,7 +169,7 @@ class DataBase:
         """
         try:
             self.cursor.execute("SELECT last_command FROM storage WHERE telegram_id=:tg_id", {"tg_id": tg_id},)
-            command = self.cursor.fetchall()[0]
+            command = self.cursor.fetchall()[0][0]
             self.cursor.execute('UPDATE storage SET last_command="" WHERE telegram_id=:tg_id', {"tg_id": tg_id},)
             self.connection.commit()
             self.log.event('pop last command from storage, id, command:' + ' '.join([str(tg_id), command]))

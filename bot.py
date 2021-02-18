@@ -69,6 +69,7 @@ def add_last_command(chat_id, command):
 
 
 def pop_last_command(chat_id):
+    status = dbAdapter.add_telegram_user_if_not_exists(chat_id)
     # тут может быть None
     command = dbAdapter.pop_last_commend(chat_id)
     return command
@@ -85,6 +86,8 @@ def start_message(message):
     """
     if message.text == '/start':
         bot.send_message(message.chat.id, START_TEXT)
+        # bot.send_message(message.chat.id, 'START_TEXT')
+        print(add_last_command(message.chat.id, '/start'))
     else:
         inst = message.text.split()[1]
         status = add_user(message.chat.id, inst)
@@ -156,7 +159,7 @@ def help_command(message):
 
 
 @bot.message_handler(commands=['mutual'])
-def help_command(message):
+def mutual_command(message):
     if message.text == "/mutual":
         bot.send_message(message.chat.id, MUTUAL_TEXT)
     else:
@@ -172,6 +175,9 @@ def help_command(message):
 @bot.message_handler(content_types=['text'])
 def send_text(message):
     bot.send_message(message.chat.id, HELP_TEXT)
+    command = pop_last_command(message.chat.id)
+    if command is not None:
+        bot.send_message(message.chat.id, command)
 
 
 def subscribersList(username):
