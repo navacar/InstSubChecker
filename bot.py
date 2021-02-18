@@ -2,7 +2,7 @@ import telebot
 import instaloader
 import requests
 
-from config import WRONG_INST_USERNAME, MUTUAL_TEXT, TELEGRAM_TOKEN, INST_USERNAME_BOT, INST_PASSWORD_BOT, START_TEXT, ERROR_MESSAGE, HELP_TEXT
+from config import ENTER_LOGIN, WRONG_INST_USERNAME, MUTUAL_TEXT, TELEGRAM_TOKEN, INST_USERNAME_BOT, INST_PASSWORD_BOT, START_TEXT, ERROR_MESSAGE, HELP_TEXT
 from Log import Log
 from DataBase import DataBase
 
@@ -86,15 +86,19 @@ def start_message(message):
     """
     if message.text == '/start':
         bot.send_message(message.chat.id, START_TEXT)
-        # bot.send_message(message.chat.id, 'START_TEXT')
-        print(add_last_command(message.chat.id, '/start'))
-    else:
-        inst = message.text.split()[1]
-        status = add_user(message.chat.id, inst)
-        if isinstance(status, str):
-            bot.send_message(message.chat.id, status)
-        else:
-            bot.send_message(message.chat.id, ERROR_MESSAGE if not status else 'Я тебя запомнил;)')
+
+
+@bot.message_handler(commands=['add'])
+def start_message(message):
+    """
+    Отправляет стартовое сообщение, и добавляет акк инсты в базу, если он существует.
+    """
+    if message.text == '/add':
+        add_last_command(message.chat.id, "/add")
+        bot.send_message(message.chat.id, ENTER_LOGIN)
+        return
+    inst = message.text.split()[1]
+    addHelper(message.chat.id, inst)    
 
 
 @bot.message_handler(commands=['unsub'])
@@ -105,26 +109,16 @@ def unsub_command(message):
     """
     if message.text == '/unsub':
         accounts = dbAdapter.get_logins_by_id(message.chat.id)
-        if len(accounts) == 1:  # Если у пользователя всего 1 inst, то необязательно его явно указывать
+        if len(accounts) == 0:
+            bot.send_message(message.chat.id, 'Не найдено приклённых аккаунтов')
+        elif len(accounts) == 1:  # Если у пользователя всего 1 inst, то необязательно его явно указывать
             inst = accounts[0]
+            unsubHelper(message.chat.id, inst)
         else:
+            add_last_command(message.chat.id, "/unsub")
             bot.send_message(message.chat.id, 'Укажите какой аккаунт вас интересует.\n'
                              'Если не помните список своих аккаунтов, можете воспользоваться командой /show')
             return
-    else:
-        inst = message.text.split()[1]
-
-    unsubcribers = get_unsub_followers(message.chat.id, inst)
-    if unsubcribers is None:
-        bot.send_message(message.chat.id, ERROR_MESSAGE)
-    elif not unsubcribers:
-        bot.send_message(message.chat.id, 'Ничего нового')
-    else:
-        bot.send_message(message.chat.id, list2str(unsubcribers))
-
-    status = update_followers(message.chat.id, inst)
-    if not status:
-        bot.send_message(message.chat.id, 'Не вышло обновить список подписчиков!')
 
 
 @bot.message_handler(commands=['show'])
@@ -143,14 +137,11 @@ def show_accounts_command(message):
 @bot.message_handler(commands=['delete'])
 def delete_account_command(message):
     if message.text == '/delete':
-        bot.send_message(message.chat.id, 'Введите /delete логин')
+        add_last_command(message.chat.id, "/delete")
+        bot.send_message(message.chat.id, ENTER_LOGIN)
         return
     inst = message.text.split()[1]
-    status = dbAdapter.delete_user(message.chat.id, inst)
-    if not status:
-        bot.send_message(message.chat.id, ERROR_MESSAGE)
-    else:
-        bot.send_message(message.chat.id, 'Аккаунт {} больше не отслеживается'.format(inst))
+    deleteHelper(message.chat.id, inst)
 
 
 @bot.message_handler(commands=['help'])
@@ -161,23 +152,69 @@ def help_command(message):
 @bot.message_handler(commands=['mutual'])
 def mutual_command(message):
     if message.text == "/mutual":
-        bot.send_message(message.chat.id, MUTUAL_TEXT)
+        add_last_command(message.chat.id, "/mutual")
+        bot.send_message(message.chat.id, ENTER_LOGIN)
     else:
-        bot.send_message(message.chat.id, "Подождите")
         inst = message.text.split()[1]
-        subList = mutualSubscriptions(inst)
-        if subList is not None:
-            bot.send_message(message.chat.id, list2str(subList))
-        else: 
-            bot.send_message(message.chat.id, WRONG_INST_USERNAME)
+        mutualHelper(message.chat.id, inst)
 
 
 @bot.message_handler(content_types=['text'])
 def send_text(message):
-    bot.send_message(message.chat.id, HELP_TEXT)
     command = pop_last_command(message.chat.id)
-    if command is not None:
-        bot.send_message(message.chat.id, command)
+    if command is None:
+        bot.send_message(message.chat.id, HELP_TEXT)
+    elif command == "/add":
+       addHelper(message.chat.id, message.text)
+    elif command == "/unsub":
+        unsubHelper(message.chat.id, message.text)
+    elif command == "/delete":
+        deleteHelper(message.chat.id, message.text)
+    elif command == "/mutual":
+        mutualHelper(message.chat.id, message.text)
+
+
+def addHelper(chatID, login):
+    bot.send_message(chatID, "Подождите")
+    status = add_user(chatID, login)
+    if isinstance(status, str):
+        bot.send_message(chatID, status)
+    else:
+        bot.send_message(chatID, ERROR_MESSAGE if not status else 'Я тебя запомнил;)')
+
+
+
+def mutualHelper(chatID, login):
+    bot.send_message(chatID, "Подождите")
+    subList = mutualSubscriptions(login)
+    if subList is not None:
+        bot.send_message(chatID, list2str(subList))
+    else: 
+        bot.send_message(chatID, WRONG_INST_USERNAME)
+
+
+def deleteHelper(chatID, login):
+    bot.send_message(chatID, "Подождите")
+    status = dbAdapter.delete_user(chatID, login)
+    if not status:
+        bot.send_message(chatID, ERROR_MESSAGE)
+    else:
+        bot.send_message(chatID, 'Аккаунт {} больше не отслеживается'.format(login))
+
+
+def unsubHelper(chatID, login):
+    bot.send_message(chatID, "Подождите")
+    unsubcribers = get_unsub_followers(chatID, login)
+    if unsubcribers is None:
+        bot.send_message(chatID, ERROR_MESSAGE)
+    elif not unsubcribers:
+        bot.send_message(chatID, 'Ничего нового')
+    else:
+        bot.send_message(chatID, list2str(unsubcribers))
+
+    status = update_followers(chatID, login)
+    if not status:
+        bot.send_message(chatID, 'Не вышло обновить список подписчиков!')
 
 
 def subscribersList(username):
