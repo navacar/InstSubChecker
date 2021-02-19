@@ -4,7 +4,7 @@ import requests
 import timeit
 import time
 
-from config import ENTER_LOGIN, WRONG_INST_USERNAME, MUTUAL_TEXT, TELEGRAM_TOKEN, INST_USERNAME_BOT, INST_PASSWORD_BOT, START_TEXT, ERROR_MESSAGE, HELP_TEXT
+from config import TOO_MANY, ENTER_LOGIN, WRONG_INST_USERNAME, MUTUAL_TEXT, TELEGRAM_TOKEN, INST_USERNAME_BOT, INST_PASSWORD_BOT, START_TEXT, ERROR_MESSAGE, HELP_TEXT
 from Log import Log
 from DataBase import DataBase
 
@@ -86,8 +86,8 @@ def start_command(message):
     """
     Отправляет стартовое сообщение.
     """
-    # if message.text == '/start':
-    bot.send_message(message.chat.id, START_TEXT)
+    if message.text == '/start':
+        bot.send_message(message.chat.id, START_TEXT)
 
 
 @bot.message_handler(commands=['add'])
@@ -95,12 +95,15 @@ def add_command(message):
     """
     Добавляет акк инсты в базу, если он существует.
     """
-    if message.text == '/add':
-        add_last_command(message.chat.id, "/add")
-        bot.send_message(message.chat.id, ENTER_LOGIN)
+    if len(dbAdapter.get_logins_by_id(message.chat.id)) <= 2:
+        if message.text == '/add':
+            add_last_command(message.chat.id, "/add")
+            bot.send_message(message.chat.id, ENTER_LOGIN)
+        else:
+            inst = message.text.split()[1]
+            addHelper(message.chat.id, inst)
     else:
-        inst = message.text.split()[1]
-        addHelper(message.chat.id, inst)
+        bot.send_message(message.chat.id, TOO_MANY)
 
 
 @bot.message_handler(commands=['unsub'])
@@ -118,8 +121,8 @@ def unsub_command(message):
             unsubHelper(message.chat.id, inst)
         else:
             add_last_command(message.chat.id, "/unsub")
-            bot.send_message(message.chat.id, 'Укажите какой аккаунт вас интересует.\n'
-                             'Если не помните список своих аккаунтов, можете воспользоваться командой /show')
+            bot.send_message(message.chat.id, 'Укажите какой аккаунт вас интересует.\n', 
+                            reply_markup = buttonsCreater(message.chat.id))
     else:
         inst = message.text.split()[1]
         unsubHelper(message.chat.id, inst)
@@ -142,7 +145,7 @@ def show_accounts_command(message):
 def delete_account_command(message):
     if message.text == '/delete':
         add_last_command(message.chat.id, "/delete")
-        bot.send_message(message.chat.id, ENTER_LOGIN)
+        bot.send_message(message.chat.id, ENTER_LOGIN, reply_markup = buttonsCreater(message.chat.id))
         return
     inst = message.text.split()[1]
     deleteHelper(message.chat.id, inst)
@@ -162,7 +165,8 @@ def mutual_command(message):
             mutualHelper(message.chat.id, inst)
         else:
             add_last_command(message.chat.id, "/mutual")
-            bot.send_message(message.chat.id, 'Укажите какой аккаунт вас интересует.')
+            bot.send_message(message.chat.id, 'Выберите интересующий вас аккаунт, или введи какой хотите.',
+                reply_markup = buttonsCreater(message.chat.id))
     else:
         inst = message.text.split()[1]
         mutualHelper(message.chat.id, inst)
@@ -171,7 +175,7 @@ def mutual_command(message):
 @bot.message_handler(content_types=['text'])
 def send_text(message):
     command = pop_last_command(message.chat.id)
-    if command is None:
+    if command is None or command == "":
         bot.send_message(message.chat.id, HELP_TEXT)
     elif command == "/add":
         addHelper(message.chat.id, message.text)
@@ -185,7 +189,7 @@ def send_text(message):
 
 def addHelper(chat_id, login):
     bot.send_message(chat_id, "Подождите")
-    status = add_user(chat_id, login)
+    status = add_user(chat_id, login.lower())
     if isinstance(status, str):
         bot.send_message(chat_id, status)
     else:
@@ -268,6 +272,15 @@ def mutualSubscriptions(username):
     return faggotsList
 
 
+def buttonsCreater(chatID):
+    buttons = telebot.types.ReplyKeyboardMarkup(
+        resize_keyboard=True, one_time_keyboard=True)
+    accounts = dbAdapter.get_logins_by_id(chatID)
+    for i in range(len(accounts)):
+        button = telebot.types.KeyboardButton("Привет") 
+        buttons.add(accounts[i])
+    return buttons;
+
+
 bot.polling()
-# for i in range(3):
-#     mutualSubscriptions('navacar1')
+
