@@ -1,6 +1,8 @@
 import telebot
 import instaloader
 import requests
+import timeit
+import time
 
 from config import ENTER_LOGIN, WRONG_INST_USERNAME, MUTUAL_TEXT, TELEGRAM_TOKEN, INST_USERNAME_BOT, INST_PASSWORD_BOT, START_TEXT, ERROR_MESSAGE, HELP_TEXT
 from Log import Log
@@ -80,25 +82,25 @@ def list2str(arr):
 
 
 @bot.message_handler(commands=['start'])
-def start_message(message):
+def start_command(message):
     """
-    Отправляет стартовое сообщение, и добавляет акк инсты в базу, если он существует.
+    Отправляет стартовое сообщение.
     """
-    if message.text == '/start':
-        bot.send_message(message.chat.id, START_TEXT)
+    # if message.text == '/start':
+    bot.send_message(message.chat.id, START_TEXT)
 
 
 @bot.message_handler(commands=['add'])
-def start_message(message):
+def add_command(message):
     """
-    Отправляет стартовое сообщение, и добавляет акк инсты в базу, если он существует.
+    Добавляет акк инсты в базу, если он существует.
     """
     if message.text == '/add':
         add_last_command(message.chat.id, "/add")
         bot.send_message(message.chat.id, ENTER_LOGIN)
-        return
-    inst = message.text.split()[1]
-    addHelper(message.chat.id, inst)    
+    else:
+        inst = message.text.split()[1]
+        addHelper(message.chat.id, inst)
 
 
 @bot.message_handler(commands=['unsub'])
@@ -118,7 +120,9 @@ def unsub_command(message):
             add_last_command(message.chat.id, "/unsub")
             bot.send_message(message.chat.id, 'Укажите какой аккаунт вас интересует.\n'
                              'Если не помните список своих аккаунтов, можете воспользоваться командой /show')
-            return
+    else:
+        inst = message.text.split()[1]
+        unsubHelper(message.chat.id, inst)
 
 
 @bot.message_handler(commands=['show'])
@@ -151,9 +155,14 @@ def help_command(message):
 
 @bot.message_handler(commands=['mutual'])
 def mutual_command(message):
-    if message.text == "/mutual":
-        add_last_command(message.chat.id, "/mutual")
-        bot.send_message(message.chat.id, ENTER_LOGIN)
+    if message.text == '/mutual':
+        accounts = dbAdapter.get_logins_by_id(message.chat.id)
+        if len(accounts) == 1:  # Если у пользователя всего 1 inst, то необязательно его явно указывать
+            inst = accounts[0]
+            mutualHelper(message.chat.id, inst)
+        else:
+            add_last_command(message.chat.id, "/mutual")
+            bot.send_message(message.chat.id, 'Укажите какой аккаунт вас интересует.')
     else:
         inst = message.text.split()[1]
         mutualHelper(message.chat.id, inst)
@@ -165,7 +174,7 @@ def send_text(message):
     if command is None:
         bot.send_message(message.chat.id, HELP_TEXT)
     elif command == "/add":
-       addHelper(message.chat.id, message.text)
+        addHelper(message.chat.id, message.text)
     elif command == "/unsub":
         unsubHelper(message.chat.id, message.text)
     elif command == "/delete":
@@ -174,49 +183,59 @@ def send_text(message):
         mutualHelper(message.chat.id, message.text)
 
 
-def addHelper(chatID, login):
-    bot.send_message(chatID, "Подождите")
-    status = add_user(chatID, login)
+def addHelper(chat_id, login):
+    bot.send_message(chat_id, "Подождите")
+    status = add_user(chat_id, login)
     if isinstance(status, str):
-        bot.send_message(chatID, status)
+        bot.send_message(chat_id, status)
     else:
-        bot.send_message(chatID, ERROR_MESSAGE if not status else 'Я тебя запомнил;)')
+        bot.send_message(chat_id, ERROR_MESSAGE if not status else 'Я тебя запомнил;)')
 
 
-
-def mutualHelper(chatID, login):
-    bot.send_message(chatID, "Подождите")
+def mutualHelper(chat_id, login):
+    bot.send_message(chat_id, "Подождите")
     subList = mutualSubscriptions(login)
     if subList is not None:
-        bot.send_message(chatID, list2str(subList))
+        bot.send_message(chat_id, list2str(subList))
     else: 
-        bot.send_message(chatID, WRONG_INST_USERNAME)
+        bot.send_message(chat_id, WRONG_INST_USERNAME)
 
 
-def deleteHelper(chatID, login):
-    bot.send_message(chatID, "Подождите")
-    status = dbAdapter.delete_user(chatID, login)
+def deleteHelper(chat_id, login):
+    bot.send_message(chat_id, "Подождите")
+    status = dbAdapter.delete_user(chat_id, login)
     if not status:
-        bot.send_message(chatID, ERROR_MESSAGE)
+        bot.send_message(chat_id, ERROR_MESSAGE)
     else:
-        bot.send_message(chatID, 'Аккаунт {} больше не отслеживается'.format(login))
+        bot.send_message(chat_id, 'Аккаунт {} больше не отслеживается'.format(login))
 
 
-def unsubHelper(chatID, login):
-    bot.send_message(chatID, "Подождите")
-    unsubcribers = get_unsub_followers(chatID, login)
+def unsubHelper(chat_id, login):
+    # ToDo: и get_unsub_followers, и update_followers вызывают subsList, что очень долго.
+    bot.send_message(chat_id, "Подождите")
+    unsubcribers = get_unsub_followers(chat_id, login)
     if unsubcribers is None:
-        bot.send_message(chatID, ERROR_MESSAGE)
+        bot.send_message(chat_id, ERROR_MESSAGE)
     elif not unsubcribers:
-        bot.send_message(chatID, 'Ничего нового')
+        bot.send_message(chat_id, 'Ничего нового')
     else:
-        bot.send_message(chatID, list2str(unsubcribers))
+        bot.send_message(chat_id, list2str(unsubcribers))
 
-    status = update_followers(chatID, login)
+    status = update_followers(chat_id, login)
     if not status:
-        bot.send_message(chatID, 'Не вышло обновить список подписчиков!')
+        bot.send_message(chat_id, 'Не вышло обновить список подписчиков!')
 
 
+def time_of_function(function):
+    def wrapped(*args, **kwargs):
+        start_time = time.time()
+        res = function(*args, **kwargs)
+        print(function.__name__, '{:.6f}s'.format(time.time() - start_time))
+        return res
+    return wrapped
+
+
+@time_of_function
 def subscribersList(username):
     try:
         profile = instaloader.Profile.from_username(loader.context, username)
@@ -228,32 +247,27 @@ def subscribersList(username):
     return subList
 
 
+@time_of_function
 def mutualSubscriptions(username):
     youFollow = []
     followedYou = []
     faggotsList = []
-    
-    youFollow = subscribersList(username)
-    if youFollow is not None:
+    try:
         profile = instaloader.Profile.from_username(loader.context, username)
-        followedYou = [followee.username for followee in profile.get_followees()]
+    except Exception as e:
+        logAdapter.error('Аккаунта не существует, либо закрыта страница: ' + username, print_=True)
+        return None
 
-        for i in range(len(followedYou)):
-            
-            isNeedToAdd = True
-            for j in range(len(youFollow)):
-                if followedYou[i] == youFollow[j]:
-                    isNeedToAdd = False
-                    youFollow.remove(youFollow[j])
-                    break
-            
-            if isNeedToAdd:
-                faggotsList.append(followedYou[i])
-                    
-    else:
-        faggotsList = None
+    youFollow = [follower.username for follower in profile.get_followers()]
+    followedYou = [followee.username for followee in profile.get_followees()]
+
+    for follower in followedYou:
+        if follower not in youFollow:
+            faggotsList.append(follower)
 
     return faggotsList
 
 
 bot.polling()
+# for i in range(3):
+#     mutualSubscriptions('navacar1')
