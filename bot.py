@@ -4,7 +4,7 @@ import requests
 import timeit
 import time
 
-from config import TOO_MANY, ENTER_LOGIN, WRONG_INST_USERNAME, MUTUAL_TEXT, TELEGRAM_TOKEN, INST_USERNAME_BOT, INST_PASSWORD_BOT, START_TEXT, ERROR_MESSAGE, HELP_TEXT
+from config import DONAT_MESSAGE, CONTACT_MESSAGE, TOO_MANY, ENTER_LOGIN, WRONG_INST_USERNAME, MUTUAL_TEXT, TELEGRAM_TOKEN, INST_USERNAME_BOT, INST_PASSWORD_BOT, START_TEXT, ERROR_MESSAGE, HELP_TEXT
 from Log import Log
 from DataBase import DataBase
 
@@ -170,6 +170,16 @@ def mutual_command(message):
     else:
         inst = message.text.split()[1]
         mutualHelper(message.chat.id, inst)
+
+
+@bot.message_handler(commands=['contact'])
+def contact_command(message):
+    bot.send_message(message.chat.id, CONTACT_MESSAGE)
+
+
+# @bot.message_handler(commands=['donat'])
+# def contact_command(message):
+#     bot.send_message(message.chat.id, DONAT_MESSAGE)
 
 
 @bot.message_handler(content_types=['text'])
