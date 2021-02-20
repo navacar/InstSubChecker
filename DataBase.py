@@ -21,19 +21,19 @@ class DataBase:
         """
         self.connection = sqlite3.connect(config.DB_NAME, check_same_thread=False)
         self.cursor = self.connection.cursor()
-        self.cursor.execute("""
-            CREATE TABLE "users" (
-            `id` INTEGER PRIMARY KEY,
-            `tg_id` INTEGER NOT NULL,
-            `inst_login` TEXT DEFAULT "",
-            `inst_followers` TEXT DEFAULT "",
-            `latest_update` timestamp)""")
-        self.connection.commit()
-        self.cursor.execute("""
-            CREATE TABLE "storage" (
-            `telegram_id` INTEGER PRIMARY KEY,
-            `last_command` TEXT DEFAULT "")""")
-        self.connection.commit()
+        # self.cursor.execute("""
+        #     CREATE TABLE "users" (
+        #     `id` INTEGER PRIMARY KEY,
+        #     `tg_id` INTEGER NOT NULL,
+        #     `inst_login` TEXT DEFAULT "",
+        #     `inst_followers` TEXT DEFAULT "",
+        #     `latest_update` timestamp)""")
+        # self.connection.commit()
+        # self.cursor.execute("""
+        #     CREATE TABLE "storage" (
+        #     `telegram_id` INTEGER PRIMARY KEY,
+        #     `last_command` TEXT DEFAULT "")""")
+        # self.connection.commit()
         self.log = main_log
 
     def add_user(self, tg_id, inst_login):
