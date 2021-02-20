@@ -95,7 +95,7 @@ def add_command(message):
     """
     Добавляет акк инсты в базу, если он существует.
     """
-    if len(dbAdapter.get_logins_by_id(message.chat.id)) <= 2:
+    if dbAdapter.get_logins_by_id(message.chat.id) != None and len(dbAdapter.get_logins_by_id(message.chat.id)) <= 2:
         if message.text == '/add':
             add_last_command(message.chat.id, "/add")
             bot.send_message(message.chat.id, ENTER_LOGIN)
@@ -105,6 +105,12 @@ def add_command(message):
     else:
         bot.send_message(message.chat.id, TOO_MANY)
 
+
+@bot.message_handler(commands=['deleteall'])
+def deleteall_command(message):
+    accounts = dbAdapter.get_logins_by_id(message.chat.id)
+    for i in range(len(accounts)):
+        deleteHelper(message.chat.id, accounts[i])
 
 @bot.message_handler(commands=['unsub'])
 def unsub_command(message):
