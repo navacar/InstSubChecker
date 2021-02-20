@@ -95,7 +95,7 @@ def add_command(message):
     """
     Добавляет акк инсты в базу, если он существует.
     """
-    if dbAdapter.get_logins_by_id(message.chat.id) != None and len(dbAdapter.get_logins_by_id(message.chat.id)) <= 2:
+    if dbAdapter.get_logins_by_id(message.chat.id) == None or len(dbAdapter.get_logins_by_id(message.chat.id)) <= 2:
         if message.text == '/add':
             add_last_command(message.chat.id, "/add")
             bot.send_message(message.chat.id, ENTER_LOGIN)
